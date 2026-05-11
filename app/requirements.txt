@@ -1,0 +1,16 @@
+# Autor: Daniel Dedek
+
+# Seznam Python zavislosti
+flask
+gunicorn
+faster-whisper
+torch
+torchvision
+torchaudio
+pyarrow>=14.0.0
+datasets>=2.19.0
+matplotlib
+nemo_toolkit[asr]>=2.2.0
+numpy>=1.26.4
+omegaconf>=2.1.0
+pytest

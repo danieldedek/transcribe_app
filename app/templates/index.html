@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!-- Autor: Daniel Dedek -->
+    <meta charset="UTF-8">
+    <title>Transcribe App</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<div class="layout">
+
+    <!-- Seznam souboru -->
+    <aside class="sidebar">
+
+        <h3>Uploaded files</h3>
+
+        <!-- Vyhledavaci formular -->
+        <form method="GET" class="search-form">
+            <input type="text" name="search" value="{{ search }}" placeholder="Search...">
+            <input type="hidden" name="sort" value="{{ sort }}">
+            <input type="hidden" name="model" value="{{ selected_model }}">
+            <button>Go</button>
+        </form>
+
+        <!-- Tlacitko pro prepinani razeni -->
+        <a class="sort-btn"
+           href="{{ url_for('index',
+                sort='name' if sort=='date' else 'date',
+                search=search,
+                model=selected_model) }}">
+            {{ 'Sort by Name' if sort=='date' else 'Sort by Date' }}
+        </a>
+
+        <!-- Aktualni razeni -->
+        <div class="sort-label">
+            Sorted by: {{ 'Name' if sort=='name' else 'Date' }}
+        </div>
+
+        {% if files %}
+        <ul>
+            {% for file in files %}
+            <li>
+
+                <strong>{{ file }}</strong>
+
+                <!-- Prehravac -->
+                <audio controls>
+                    <source src="{{ url_for('uploaded_file', filename=file) }}" type="audio/wav">
+                </audio>
+
+                <div class="button-row">
+
+                    <!-- Tlacitko pro zahajeni prepisu -->
+                    <button
+                        type="submit"
+                        form="main-form"
+                        name="action"
+                        value="use_file"
+                        onclick="document.getElementById('audio_file_input').value='{{ file }}'">
+                        Use
+                    </button>
+
+                    <!-- Tlacitko pro smazani souboru -->
+                    <form method="POST" action="{{ url_for('delete_file', filename=file) }}">
+                        <button type="submit" class="delete-btn">Delete</button>
+                    </form>
+
+                </div>
+
+            </li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        <!-- Strankovani -->
+        <div class="pagination">
+
+            <div>
+                <!-- Odkaz na predchozi stranku -->
+                {% if page > 1 %}
+                <a href="{{ url_for('index',
+                    page=page-1,
+                    sort=sort,
+                    search=search,
+                    model=selected_model) }}">Prev</a>
+                {% endif %}
+            </div>
+
+            <div>Page {{ page }} / {{ total_pages }}</div>
+
+            <div>
+                <!-- Odkaz na dalsi stranku -->
+                {% if page < total_pages %}
+                <a href="{{ url_for('index',
+                    page=page+1,
+                    sort=sort,
+                    search=search,
+                    model=selected_model) }}">Next</a>
+                {% endif %}
+            </div>
+
+        </div>
+
+    </aside>
+
+    <!-- HLavni obsah -->
+    <main class="main">
+        <div class="container">
+
+            <h2>Transcribe App</h2>
+
+            <!-- Hlavni formular pro nahravani souboru a nastavovani parametru pro prepis -->
+            <form id="main-form" method="POST" enctype="multipart/form-data">
+
+                <input type="hidden" name="audio_file" id="audio_file_input">
+
+                <!-- Nahrani WAV souboru -->
+                <div class="inline-row">
+                    <input type="file" name="file" accept=".wav">
+                    <button type="submit" name="action" value="upload">Upload</button>
+                </div>
+
+                <hr>
+
+                <!-- Vyber modelu -->
+                <div class="inline-row">
+                    <select name="selected_model">
+                        <option value="canary" {% if selected_model=="canary" %}selected{% endif %}>Canary</option>
+                        <option value="parakeet" {% if selected_model=="parakeet" %}selected{% endif %}>Parakeet</option>
+                        <option value="whisper" {% if selected_model=="whisper" %}selected{% endif %}>Whisper</option>
+                    </select>
+
+                    <button type="submit" name="action" value="select_model">Select model</button>
+                </div>
+
+                <hr>
+                
+                <!-- Spolecne parametry -->
+                {% if selected_model != "whisper" %}
+                <label>Device</label>
+                <select name="device">
+                    <option value="cpu" {% if device=="cpu" %}selected{% endif %}>CPU</option>
+                    <option value="cuda" {% if device=="cuda" %}selected{% endif %}>GPU</option>
+                </select>
+
+                <label>Strategy</label>
+                <select name="strategy">
+                    <option value="greedy" {% if strategy=="greedy" %}selected{% endif %}>Greedy</option>
+                    <option value="beam" {% if strategy=="beam" %}selected{% endif %}>Beam</option>
+                </select>
+                {% endif %}
+
+                <div class="param">
+                    <label>Beam size</label>
+                    <input type="number" name="beam_size" value="{{ beam_size }}">
+                </div>
+                
+                <!-- Parametry modelu Canary -->
+                {% if selected_model == "canary" %}
+                <h3>Canary settings</h3>
+
+                <label>Language</label>
+                <select name="language">
+                    <option value="en" {% if language=="en" %}selected{% endif %}>English</option>
+                    <option value="de" {% if language=="de" %}selected{% endif %}>German</option>
+                    <option value="es" {% if language=="es" %}selected{% endif %}>Spanish</option>
+                    <option value="fr" {% if language=="fr" %}selected{% endif %}>French</option>
+                </select>
+
+                <div class="param">
+                    <label>Length penalty</label>
+                    <input type="number" step="0.1" name="len_pen" value="{{ len_pen }}">
+                </div>
+
+                <div class="param param-inline">
+                    <label>FP16</label>
+                    <label class="switch">
+                        <input type="checkbox" name="fp16" {% if use_fp16 %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="param param-inline">
+                    <label>Return hypotheses</label>
+                    <label class="switch">
+                        <input type="checkbox" name="return_hypotheses" {% if return_hypotheses %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                {% endif %}
+
+                <!-- Parametry modelu Parakeet -->
+                {% if selected_model == "parakeet" %}
+                <h3>Parakeet settings</h3>
+
+                <div class="param param-inline">
+                    <label>FP16</label>
+                    <label class="switch">
+                        <input type="checkbox" name="fp16" {% if use_fp16 %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="param param-inline">
+                    <label>Return hypotheses</label>
+                    <label class="switch">
+                        <input type="checkbox" name="return_hypotheses" {% if return_hypotheses %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                {% endif %}
+
+                <!-- Parametry modelu whisper -->
+                {% if selected_model == "whisper" %}
+                <h3>Whisper settings</h3>
+
+                <label>Model size</label>
+                <select name="model_size">
+                    <option value="tiny" {% if model_size=="tiny" %}selected{% endif %}>Tiny</option>
+                    <option value="base" {% if model_size=="base" %}selected{% endif %}>Base</option>
+                    <option value="small" {% if model_size=="small" %}selected{% endif %}>Small</option>
+                    <option value="medium" {% if model_size=="medium" %}selected{% endif %}>Medium</option>
+                    <option value="large-v3" {% if model_size=="large-v3" %}selected{% endif %}>Large v3</option>
+                </select>
+
+                <label>Language</label>
+                <select name="whisper_language">
+                    <option value="af" {% if whisper_language=="af" %}selected{% endif %}>Afrikaans</option>
+                    <option value="am" {% if whisper_language=="am" %}selected{% endif %}>Amharic</option>
+                    <option value="ar" {% if whisper_language=="ar" %}selected{% endif %}>Arabic</option>
+                    <option value="as" {% if whisper_language=="as" %}selected{% endif %}>Assamese</option>
+                    <option value="az" {% if whisper_language=="az" %}selected{% endif %}>Azerbaijani</option>
+                    <option value="ba" {% if whisper_language=="ba" %}selected{% endif %}>Bashkir</option>
+                    <option value="be" {% if whisper_language=="be" %}selected{% endif %}>Belarusian</option>
+                    <option value="bg" {% if whisper_language=="bg" %}selected{% endif %}>Bulgarian</option>
+                    <option value="bn" {% if whisper_language=="bn" %}selected{% endif %}>Bengali</option>
+                    <option value="bo" {% if whisper_language=="bo" %}selected{% endif %}>Tibetan</option>
+                    <option value="br" {% if whisper_language=="br" %}selected{% endif %}>Breton</option>
+                    <option value="bs" {% if whisper_language=="bs" %}selected{% endif %}>Bosnian</option>
+                    <option value="ca" {% if whisper_language=="ca" %}selected{% endif %}>Catalan</option>
+                    <option value="cs" {% if whisper_language=="cs" %}selected{% endif %}>Czech</option>
+                    <option value="cy" {% if whisper_language=="cy" %}selected{% endif %}>Welsh</option>
+                    <option value="da" {% if whisper_language=="da" %}selected{% endif %}>Danish</option>
+                    <option value="de" {% if whisper_language=="de" %}selected{% endif %}>German</option>
+                    <option value="el" {% if whisper_language=="el" %}selected{% endif %}>Greek</option>
+                    <option value="en" {% if whisper_language=="en" %}selected{% endif %}>English</option>
+                    <option value="es" {% if whisper_language=="es" %}selected{% endif %}>Spanish</option>
+                    <option value="et" {% if whisper_language=="et" %}selected{% endif %}>Estonian</option>
+                    <option value="eu" {% if whisper_language=="eu" %}selected{% endif %}>Basque</option>
+                    <option value="fa" {% if whisper_language=="fa" %}selected{% endif %}>Persian (Farsi)</option>
+                    <option value="fi" {% if whisper_language=="fi" %}selected{% endif %}>Finnish</option>
+                    <option value="fo" {% if whisper_language=="fo" %}selected{% endif %}>Faroese</option>
+                    <option value="fr" {% if whisper_language=="fr" %}selected{% endif %}>French</option>
+                    <option value="gl" {% if whisper_language=="gl" %}selected{% endif %}>Galician</option>
+                    <option value="gu" {% if whisper_language=="gu" %}selected{% endif %}>Gujarati</option>
+                    <option value="ha" {% if whisper_language=="ha" %}selected{% endif %}>Hausa</option>
+                    <option value="haw" {% if whisper_language=="haw" %}selected{% endif %}>Hawaiian</option>
+                    <option value="he" {% if whisper_language=="he" %}selected{% endif %}>Hebrew</option>
+                    <option value="hi" {% if whisper_language=="hi" %}selected{% endif %}>Hindi</option>
+                    <option value="hr" {% if whisper_language=="hr" %}selected{% endif %}>Croatian</option>
+                    <option value="ht" {% if whisper_language=="ht" %}selected{% endif %}>Haitian Creole</option>
+                    <option value="hu" {% if whisper_language=="hu" %}selected{% endif %}>Hungarian</option>
+                    <option value="hy" {% if whisper_language=="hy" %}selected{% endif %}>Armenian</option>
+                    <option value="id" {% if whisper_language=="id" %}selected{% endif %}>Indonesian</option>
+                    <option value="is" {% if whisper_language=="is" %}selected{% endif %}>Icelandic</option>
+                    <option value="it" {% if whisper_language=="it" %}selected{% endif %}>Italian</option>
+                    <option value="ja" {% if whisper_language=="ja" %}selected{% endif %}>Japanese</option>
+                    <option value="jw" {% if whisper_language=="jw" %}selected{% endif %}>Javanese</option>
+                    <option value="ka" {% if whisper_language=="ka" %}selected{% endif %}>Georgian</option>
+                    <option value="kk" {% if whisper_language=="kk" %}selected{% endif %}>Kazakh</option>
+                    <option value="km" {% if whisper_language=="km" %}selected{% endif %}>Khmer</option>
+                    <option value="kn" {% if whisper_language=="kn" %}selected{% endif %}>Kannada</option>
+                    <option value="ko" {% if whisper_language=="ko" %}selected{% endif %}>Korean</option>
+                    <option value="la" {% if whisper_language=="la" %}selected{% endif %}>Latin</option>
+                    <option value="lb" {% if whisper_language=="lb" %}selected{% endif %}>Luxembourgish</option>
+                    <option value="ln" {% if whisper_language=="ln" %}selected{% endif %}>Lingala</option>
+                    <option value="lo" {% if whisper_language=="lo" %}selected{% endif %}>Lao</option>
+                    <option value="lt" {% if whisper_language=="lt" %}selected{% endif %}>Lithuanian</option>
+                    <option value="lv" {% if whisper_language=="lv" %}selected{% endif %}>Latvian</option>
+                    <option value="mg" {% if whisper_language=="mg" %}selected{% endif %}>Malagasy</option>
+                    <option value="mi" {% if whisper_language=="mi" %}selected{% endif %}>Māori</option>
+                    <option value="mk" {% if whisper_language=="mk" %}selected{% endif %}>Macedonian</option>
+                    <option value="ml" {% if whisper_language=="ml" %}selected{% endif %}>Malayalam</option>
+                    <option value="mn" {% if whisper_language=="mn" %}selected{% endif %}>Mongolian</option>
+                    <option value="mr" {% if whisper_language=="mr" %}selected{% endif %}>Marathi</option>
+                    <option value="ms" {% if whisper_language=="ms" %}selected{% endif %}>Malay</option>
+                    <option value="mt" {% if whisper_language=="mt" %}selected{% endif %}>Maltese</option>
+                    <option value="my" {% if whisper_language=="my" %}selected{% endif %}>Burmese</option>
+                    <option value="ne" {% if whisper_language=="ne" %}selected{% endif %}>Nepali</option>
+                    <option value="nl" {% if whisper_language=="nl" %}selected{% endif %}>Dutch</option>
+                    <option value="nn" {% if whisper_language=="nn" %}selected{% endif %}>Norwegian Nynorsk</option>
+                    <option value="no" {% if whisper_language=="no" %}selected{% endif %}>Norwegian</option>
+                    <option value="oc" {% if whisper_language=="oc" %}selected{% endif %}>Occitan</option>
+                    <option value="pa" {% if whisper_language=="pa" %}selected{% endif %}>Punjabi</option>
+                    <option value="pl" {% if whisper_language=="pl" %}selected{% endif %}>Polish</option>
+                    <option value="ps" {% if whisper_language=="ps" %}selected{% endif %}>Pashto</option>
+                    <option value="pt" {% if whisper_language=="pt" %}selected{% endif %}>Portuguese</option>
+                    <option value="ro" {% if whisper_language=="ro" %}selected{% endif %}>Romanian</option>
+                    <option value="ru" {% if whisper_language=="ru" %}selected{% endif %}>Russian</option>
+                    <option value="sa" {% if whisper_language=="sa" %}selected{% endif %}>Sanskrit</option>
+                    <option value="sd" {% if whisper_language=="sd" %}selected{% endif %}>Sindhi</option>
+                    <option value="si" {% if whisper_language=="si" %}selected{% endif %}>Sinhala</option>
+                    <option value="sk" {% if whisper_language=="sk" %}selected{% endif %}>Slovak</option>
+                    <option value="sl" {% if whisper_language=="sl" %}selected{% endif %}>Slovenian</option>
+                    <option value="sn" {% if whisper_language=="sn" %}selected{% endif %}>Shona</option>
+                    <option value="so" {% if whisper_language=="so" %}selected{% endif %}>Somali</option>
+                    <option value="sq" {% if whisper_language=="sq" %}selected{% endif %}>Albanian</option>
+                    <option value="sr" {% if whisper_language=="sr" %}selected{% endif %}>Serbian</option>
+                    <option value="su" {% if whisper_language=="su" %}selected{% endif %}>Sundanese</option>
+                    <option value="sv" {% if whisper_language=="sv" %}selected{% endif %}>Swedish</option>
+                    <option value="sw" {% if whisper_language=="sw" %}selected{% endif %}>Swahili</option>
+                    <option value="ta" {% if whisper_language=="ta" %}selected{% endif %}>Tamil</option>
+                    <option value="te" {% if whisper_language=="te" %}selected{% endif %}>Telugu</option>
+                    <option value="tg" {% if whisper_language=="tg" %}selected{% endif %}>Tajik</option>
+                    <option value="th" {% if whisper_language=="th" %}selected{% endif %}>Thai</option>
+                    <option value="tk" {% if whisper_language=="tk" %}selected{% endif %}>Turkmen</option>
+                    <option value="tl" {% if whisper_language=="tl" %}selected{% endif %}>Tagalog</option>
+                    <option value="tr" {% if whisper_language=="tr" %}selected{% endif %}>Turkish</option>
+                    <option value="tt" {% if whisper_language=="tt" %}selected{% endif %}>Tatar</option>
+                    <option value="uk" {% if whisper_language=="uk" %}selected{% endif %}>Ukrainian</option>
+                    <option value="ur" {% if whisper_language=="ur" %}selected{% endif %}>Urdu</option>
+                    <option value="uz" {% if whisper_language=="uz" %}selected{% endif %}>Uzbek</option>
+                    <option value="vi" {% if whisper_language=="vi" %}selected{% endif %}>Vietnamese</option>
+                    <option value="yi" {% if whisper_language=="yi" %}selected{% endif %}>Yiddish</option>
+                    <option value="yo" {% if whisper_language=="yo" %}selected{% endif %}>Yoruba</option>
+                    <option value="zh" {% if whisper_language=="zh" %}selected{% endif %}>Chinese</option>
+                    <option value="yue" {% if whisper_language=="yue" %}selected{% endif %}>Cantonese</option>
+                </select>
+
+                <div class="param">
+                    <label>Temperature</label>
+                    <input type="number" step="0.1" name="temperature" value="{{ temperature }}">
+                </div>
+
+                <div class="param">
+                    <label>Best of</label>
+                    <input type="number" name="best_of" value="{{ best_of }}">
+                </div>
+
+                <div class="param param-inline">
+                    <label>VAD filter</label>
+                    <label class="switch">
+                        <input type="checkbox" name="vad_filter" {% if vad_filter %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="param param-inline">
+                    <label>Condition on previous text</label>
+                    <label class="switch">
+                        <input type="checkbox" name="condition_on_previous_text" {% if condition_on_previous_text %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="param param-inline">
+                    <label>Show timestamps</label>
+                    <label class="switch">
+                        <input type="checkbox" name="show_timestamps" {% if show_timestamps %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <div class="param param-inline">
+                    <label>Show confidence</label>
+                    <label class="switch">
+                        <input type="checkbox" name="show_confidence" {% if show_confidence %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                {% endif %}
+
+            </form>
+
+            <!-- Zobrazeni vysledku prepisu -->
+            {% if transcript %}
+            <div class="card">
+                <textarea readonly>{{ transcript }}</textarea>
+
+                <!-- Tabulka segmentu pro model Whisper -->
+                {% if whisper_segments %}
+                <table>
+                    <thead>
+                        <tr>
+                            {% if show_timestamps %}
+                            <th>Start</th>
+                            <th>End</th>
+                            {% endif %}
+                            <th>Text</th>
+                            {% if show_confidence %}
+                            <th>Confidence</th>
+                            {% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for seg in whisper_segments %}
+                        <tr>
+                            {% if show_timestamps %}
+                            <td>{{ seg.start }}s</td>
+                            <td>{{ seg.end }}s</td>
+                            {% endif %}
+                            <td>{{ seg.text }}</td>
+                            {% if show_confidence %}
+                            <td>{{ (seg.confidence * 100)|int }}%</td>
+                            {% endif %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% endif %}
+
+                <div class="button-row">
+                    <!-- Stazeni prepisu jako transcript.txt -->
+                    <form method="POST" action="{{ url_for('download') }}">
+                        <input type="hidden" name="transcript" value="{{ transcript }}">
+                        <button>Download</button>
+                    </form>
+                
+                    <!-- Smazani vysledku prepisu -->
+                    <form method="POST">
+                        <button name="action" value="clear" class="delete-btn">Clear</button>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Chybova zprava -->
+            {% if error %}
+            <div class="card error">
+                {{ error }}
+            </div>
+            {% endif %}
+
+        </div>
+    </main>
+
+</div>
+
+<!-- Overlay pri tvorbe prepisu -->
+<div id="loading-overlay">
+    <div id="loading-spinner"></div>
+    <p>Transcribing, please wait...</p>
+</div>
+
+<script>
+    document.getElementById('main-form').addEventListener('submit', function(e) {
+        const action = document.activeElement.value;
+        if (action === 'use_file') {
+            document.getElementById('loading-overlay').style.display = 'flex';
+        }
+    });
+</script>
+
+</body>
+</html>
