@@ -45,7 +45,7 @@ Webová aplikace na platformě Umbrel pro automatický přepis audio souborů (W
 
 ### Nahrání souboru
 
-1. Klikněte na tlačítko **Vybrat soubor** (pole `file`) v pravé části stránky.
+1. Klikněte na tlačítko **Procházet...** (pole `file`).
 2. Vyberte soubor ve formátu `.wav`.
 3. Stiskněte **Upload**.
 4. Soubor se zobrazí v levém panelu se seznamem nahraných souborů.
