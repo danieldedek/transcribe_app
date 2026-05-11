@@ -1,0 +1,25 @@
+name: Docker Image CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Docker Login
+      uses: docker/login-action@v3.5.0
+      with:
+        username: danieldedek
+        password: ${{ secrets.DOCKER_PASSWORD }}
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag danieldedek/transcribe_app:1.0
+    - name: Push the docker image to Docker Hub
+      run: docker push danieldedek/transcribe_app:1.0
