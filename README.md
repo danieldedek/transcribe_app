@@ -69,7 +69,7 @@ Po výběru klikněte na **Select model** pro potvrzení.
 | Parametr | Popis |
 |---|---|
 | **Device** | `cpu` nebo `cuda` (GPU) — Whisper tuto volbu nezobrazuje, detekuje automaticky |
-| **Strategy** | `greedy` — hladové dekódování; `beam` — beam dekódování (přesnější, pomalejší) — Whisper tuto volbu nezobrazuje, používá parametr `temperature` |
+| **Strategy** | `greedy` nebo `beam` (přesnější, pomalejší) — Whisper tuto volbu nezobrazuje, používá parametr `temperature` |
 | **Beam size** | Šířka paprsku pro beam dekódování (výchozí: 5) |
 
 #### Whisper — specifické parametry
